@@ -15,7 +15,8 @@ namespace API.Services.ZoomService
         private readonly IZoomTokenService zoomTokenService;
         private readonly ZoomConfigurations _opts;
         private const string CacheKey = "zoom_access_token";
-        public ZoomApiService(IHttpClientFactory http, IMemoryCache cache, IOptions<ZoomConfigurations> opts , IZoomTokenService zoomTokenService)
+        
+        public ZoomApiService(IHttpClientFactory http, IMemoryCache cache, IOptions<ZoomConfigurations> opts, IZoomTokenService zoomTokenService)
         {
             _http = http;
             _cache = cache;
@@ -23,8 +24,7 @@ namespace API.Services.ZoomService
             _opts = opts.Value;
         }
 
-      
-        public async Task<CreateMeetingResponse> CreateMeetingAsync( CreateMeetingRequest request, CancellationToken ct = default)
+        public async Task<CreateMeetingResponse> CreateMeetingAsync(CreateMeetingRequest request, CancellationToken ct = default)
         {
             string accessToken = await zoomTokenService.GetAccessTokenAsync(ct);
             string userId = zoomTokenService.GetZoomUserId(accessToken);
@@ -54,6 +54,53 @@ namespace API.Services.ZoomService
             });
 
             return meetingResponse!;
+        }
+
+        public async Task UpdateMeetingStatusAsync(long meetingId, UpdateMeetingStatusRequest request, CancellationToken ct = default)
+        {
+            string accessToken = await zoomTokenService.GetAccessTokenAsync(ct);
+            var client = _http.CreateClient();
+
+            var requestUrl = $"{_opts.ApiBaseUrl}/meetings/{meetingId}/status";
+            var httpRequest = new HttpRequestMessage(HttpMethod.Put, requestUrl);
+
+            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            httpRequest.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+            var requestBody = JsonSerializer.Serialize(request, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                WriteIndented = false
+            });
+            httpRequest.Content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.SendAsync(httpRequest, ct);
+            if (request.Action == "end")
+            {
+                await MakeMeetingExpire(meetingId, accessToken);
+            }
+            response.EnsureSuccessStatusCode();
+        }
+
+        private async Task MakeMeetingExpire(long meetingId,string token)
+        {
+            var client = _http.CreateClient();
+
+            var requestUrl = $"{_opts.ApiBaseUrl}/meetings/{meetingId}";
+            var httpRequest = new HttpRequestMessage(HttpMethod.Patch, requestUrl);
+
+            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            httpRequest.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+            var requestBody = JsonSerializer.Serialize(new
+            {
+                start_time = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                topic = "Expired Meeting"
+            });
+
+            httpRequest.Content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
+            var response = await client.SendAsync(httpRequest);
+            response.EnsureSuccessStatusCode();
         }
     }
 }

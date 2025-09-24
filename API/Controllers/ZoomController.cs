@@ -20,5 +20,11 @@ namespace API.Controllers
             return Ok(result);
         }
 
+        [HttpPut("meetings/{meetingId}/status")]
+        public async Task<IActionResult> UpdateMeetingStatus(long meetingId, [FromBody] UpdateMeetingStatusRequest req, CancellationToken ct)
+        {
+            await _zoom.UpdateMeetingStatusAsync(meetingId, req, ct);
+            return NoContent();
+        }
     }
 }
