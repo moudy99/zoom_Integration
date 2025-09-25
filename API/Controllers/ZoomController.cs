@@ -16,7 +16,7 @@ namespace API.Controllers
         [HttpPost("create-meeting")]
         public async Task<IActionResult> CreateMeeting([FromBody] CreateMeetingRequest req, CancellationToken ct)
         {
-            var result = await _zoom.CreateMeetingAsync( req, ct);
+            var result = await _zoom.CreateMeetingAsync(req, ct);
             return Ok(result);
         }
 
@@ -25,6 +25,13 @@ namespace API.Controllers
         {
             await _zoom.UpdateMeetingStatusAsync(meetingId, req, ct);
             return NoContent();
+        }
+
+        [HttpGet("meetings/{meetingId}")]
+        public async Task<IActionResult> GetMeeting(long meetingId, CancellationToken ct)
+        {
+            var result = await _zoom.GetMeetingAsync(meetingId, ct);
+            return Ok(result);
         }
     }
 }

@@ -6,5 +6,6 @@ namespace API.Services.ZoomService
     {
         Task<CreateMeetingResponse> CreateMeetingAsync(CreateMeetingRequest request, CancellationToken ct = default);
         Task UpdateMeetingStatusAsync(long meetingId, UpdateMeetingStatusRequest request, CancellationToken ct = default);
+        Task<GetMeetingResponse> GetMeetingAsync(long meetingId, CancellationToken ct = default);
     }
 }
